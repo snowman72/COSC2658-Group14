@@ -1,26 +1,25 @@
+import java.util.Scanner;
+
 public class Main {
 
     // Constants
-    static final int N = 6; // number of rows/ columns
-    static final int SIZE = 64; // size of grid
-    static final long TIME_OUT = 1800000; // 30 minutes
-
-    static boolean isTimedOut = false;
+    static final int N = 8; // number of rows/ columns
+    static final long TIME_OUT = 10800000; // 3 hours, but in milliseconds
     static long totalPath = 0;
     static int[] dx = {0, 1, 0, -1}; // direction of moves in x (R, D, L, U)
     static int[] dy = {1, 0, -1, 0}; // direction of moves in y (R, D, L, U)
     static char[] moves; // move characters such as 'U', 'D', 'L', 'R'
+    static final long startTime = System.currentTimeMillis();
 
     public static void main(String[] args) {
-        // Start timer
-        long startTime = System.currentTimeMillis();
 
-//        String path = "***************************************************************"; // Sample Input 1
-//        String path = "*****DR******R******R********************R*D************L******"; // Sample Input 2
-//        String path = "*D*"; // Example for 2x2 grid
-//        String path = "****D***"; // Example for 3x3 grid
-//        String path = "***************"; // Example for 4x4 grid
-        String path = "*********DR************L***********"; // Example for 6x6 grid
+        // Sample Input 1: "***************************************************************"
+        // Sample Input 2: "*****DR******R******R********************R*D************L******"
+
+        // Get input from user
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Input: ");
+        String path = scanner.nextLine();
 
         // Input validation
         if (path.length() != N*N-1 || !path.matches("[UDLR*]*")) {
@@ -36,33 +35,32 @@ public class Main {
             visited[0][0] = true; // starting point needs to be marked as visited
 
             // Start recursive search
-            dfs(0, 0, 0, visited, -1, startTime);
+            dfs(0, 0, 0, visited, -1);
         }
 
         // End timer
         long endTime = System.currentTimeMillis();
 
         // Print output
-        System.out.println("Input: " + path);
         System.out.println("Total paths: " + totalPath);
         System.out.println("Time (ms): " + (endTime - startTime));
     }
 
+
     /***
-     * Function to search paths by recursively trying different moves
+     * Function to search paths by applying the method of depth-first search (dfs) and backtracking algorithm.
+     * Base case: We have gone through enough 63 steps and reached the destination index (7,0)
      * @param x row index of current cell
      * @param y column index of current cell
      * @param step number of moves made so far
      * @param visited 2D array to track visited cells
      * @param prevDir previous direction of move
-     * @param startTime start time of the search
      */
-    private static void dfs(int x, int y, int step, boolean[][] visited, int prevDir, long startTime) {
+    private static void dfs(int x, int y, int step, boolean[][] visited, int prevDir) {
         long currentTime = System.currentTimeMillis();
 
         // Check if the search has exceeded the time limit
         if (currentTime - startTime > TIME_OUT) {
-//            isTimedOut = true;
             return;
         }
 
@@ -101,7 +99,7 @@ public class Main {
                 continue; // Avoid U-turns
             }
 
-            // Try moving in the current direction
+            // Try calculating the next move
             int nx = x + dx[dir];
             int ny = y + dy[dir];
 
@@ -110,24 +108,19 @@ public class Main {
                 visited[nx][ny] = true;
 
                 // If the remaining unvisited cells cannot together form a valid path,
-                // stop current search and move on to the next direction
+                // stop current search, and go back to the previous direction
                 if (isGridSplit(visited)) {
                     visited[nx][ny] = false; // Backtrack
                     continue;
                 }
 
-                dfs(nx, ny, step + 1, visited, dir, startTime);
-//                if (isTimedOut) {
-//                    return;
-//                }
+                dfs(nx, ny, step + 1, visited, dir);
+
                 visited[nx][ny] = false; // Backtrack
             }
         }
-        // Early termination if the current cell is trapped
-//        if (isTrapped(x, y, visited)) {
-//            return;
-//        }
     }
+
 
     /***
      * Function to check if the move is valid (i.e. within bounds and unvisited)
@@ -140,33 +133,12 @@ public class Main {
         return x >= 0 && y >= 0 && x < N && y < N && !visited[x][y];
     }
 
-    /***
-     * Function to check whether the current cell is trapped (i.e. all 4 directions are blocked)
-     * @param x row index of current cell
-     * @param y column index of current cell
-     * @param visited 2D array to track visited cells
-     * @return true if the current cell is trapped, false otherwise
-     */
-    private static boolean isTrapped(int x, int y, boolean[][] visited) {
-        int numOfBlockDir = 0; // count number of blocked directions
-
-        // Try moving in all 4 directions
-        for (int i = 0; i < 4; i++) {
-            int nx = x + dx[i];
-            int ny = y + dy[i];
-
-            // If the cell is out of bounds or already visited, increment the count
-            if (nx < 0 || ny < 0 || nx >= N || ny >= N || visited[nx][ny]) {
-                numOfBlockDir++;
-            }
-        }
-        return numOfBlockDir == 4; // If all 4 directions are blocked, return true
-    }
 
     /***
      * Check whether the remaining unvisited cells on the grid cannot together form a valid path
      * (or the grid has been 'split'), by comparing the number of unvisited cells with the number of
-     * reachable cells from the position of an unvisited cell
+     * cells which can form a valid path, with the starting point of iteration is the index of an unvisited
+     * cell found in the grid.
      * @param visited 2D array to track visited cells
      * @return true if the remaining unvisited cells cannot together form a valid path, false otherwise
      */
@@ -194,6 +166,7 @@ public class Main {
         return reachableCells != unvisitedCells;
     }
 
+
     /***
      * Function to count the number of unvisited cells on the grid
      * @param visited 2D array to track visited cells
@@ -212,14 +185,16 @@ public class Main {
         return count;
     }
 
+
     /***
-     * Function to count the number of reachable cells from a given cell,
-     * by using the method of depth-first search similar to method dfs() above
+     * Function to count the number of cells that can form a valid path, in which
+     * this given position index is the starting point. This method uses the method of
+     * depth-first search similar to method dfs() above.
      * @param x row index of the cell
      * @param y column index of the cell
      * @param visitedCopy copy of the visited array
      * @param visited 2D array to track visited cells
-     * @return number of reachable cells from the given cell
+     * @return number of cells that can form a valid path from the given cell
      */
     private static int dfsCount(int x, int y, boolean[][] visitedCopy, boolean[][] visited) {
 
@@ -237,6 +212,7 @@ public class Main {
         }
         return count;
     }
+
 
     /**
      * Function that takes in a direction character and return an index,
